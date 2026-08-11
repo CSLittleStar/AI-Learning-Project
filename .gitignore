@@ -1,0 +1,13 @@
+# ===== 编译产物 =====
+*.pyc
+__pycache__/
+.venv/
+
+# ===== 训练权重（体积过大，不上传） =====
+*.pth
+
+# ===== 数据集（体积过大，仅保留空目录占位，不上传真实数据） =====
+data/cifar10/**
+data/MNIST/**
+!data/cifar10/.gitkeep
+!data/MNIST/.gitkeep
