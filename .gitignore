@@ -7,7 +7,7 @@ __pycache__/
 *.pth
 
 # ===== 数据集（体积过大，仅保留空目录占位，不上传真实数据） =====
-data/cifar10/**
-data/MNIST/**
-!data/cifar10/.gitkeep
-!data/MNIST/.gitkeep
+CNN-Learning/data/cifar10/**
+CNN-Learning/data/MNIST/**
+!CNN-Learning/data/cifar10/.gitkeep
+!CNN-Learning/data/MNIST/.gitkeep

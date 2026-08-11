@@ -99,7 +99,7 @@ CIFAR10_CLASSES = (
 
 # 数据集根目录 (本仓库 data/cifar10 下包含 cifar-10-batches-py 文件夹,
 # torchvision 的 CIFAR10 要求 root 指向包含 cifar-10-batches-py 的目录)
-DATA_DIR = r"e:/CNN-Learning/data/cifar10"
+DATA_DIR = r"e:/AI-Learning/CNN-Learning/data/cifar10"
 
 # 训练超参数
 NUM_CLASSES = 10
