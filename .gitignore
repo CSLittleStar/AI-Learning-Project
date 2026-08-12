@@ -14,3 +14,5 @@ CNN-Learning/data/MNIST/**
 
 # ===== 其他不上传文件 =====
 调参.txt
+_pdf_text.txt
+_read_pdf.py
