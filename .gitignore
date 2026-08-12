@@ -11,3 +11,6 @@ CNN-Learning/data/cifar10/**
 CNN-Learning/data/MNIST/**
 !CNN-Learning/data/cifar10/.gitkeep
 !CNN-Learning/data/MNIST/.gitkeep
+
+# ===== 其他不上传文件 =====
+调参.txt
