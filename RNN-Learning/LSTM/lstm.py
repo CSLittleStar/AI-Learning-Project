@@ -1,28 +1,4 @@
-"""
-长短期记忆网络 (LSTM) 数字序列预测 —— 代码复现
-================================================
-参考 RNN-Learning/RNN/rnn.py 的做法流程，复现 LSTM 并训练数字序列预测。
-
-文件名统一为 lstm.py，放置在 RNN-Learning/LSTM 下。
-
-本文件包含三部分：
-  1. VanillaLSTM (from scratch) —— 完全从零实现 LSTM 前向 + BPTT 反向传播
-  2. TorchLSTM                —— 使用 PyTorch 内置 nn.LSTM 的版本（对照）
-  3. 数据 / 训练 / 可视化       —— 同样以"正弦波序列预测"作为数字序列预测任务
-
-LSTM 单元公式（各门控使用 sigmoid，候选/状态使用 tanh）：
-  拼接 z = [h(t-1); x(t)]
-  f(t) = sigmoid(W_f · z + b_f)    遗忘门：决定丢弃多少旧记忆
-  i(t) = sigmoid(W_i · z + b_i)    输入门：决定写入多少新信息
-  g(t) = tanh(W_g  · z + b_g)     候选记忆
-  o(t) = sigmoid(W_o · z + b_o)    输出门：决定输出多少记忆
-  c(t) = f(t) ⊙ c(t-1) + i(t) ⊙ g(t)   细胞状态（长期记忆，沿时间直连）
-  h(t) = o(t) ⊙ tanh(c(t))             隐藏状态（短期输出）
-  输出：y(t) = W_hy · h(t) + b_y
-
-相比普通 RNN，LSTM 通过细胞状态 c(t) 的"直连通道"缓解梯度消失，
-因此能记住更久以前的信息（对应笔记问题5）。
-"""
+"""长短期记忆网络 (LSTM) 数字序列预测 —— 代码复现"""
 
 import numpy as np
 import torch
@@ -33,14 +9,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-
 def get_device():
     if hasattr(torch, "xpu") and torch.xpu.is_available():
         return torch.device("xpu")
     if torch.cuda.is_available():
         return torch.device("cuda")
     return torch.device("cpu")
-
 
 # ============================================================================
 # 1. 从零实现 VanillaLSTM（含 BPTT 反向传播）
@@ -174,11 +148,13 @@ class VanillaLSTM:
                   self.W_g.T @ dg_raw + self.W_o.T @ do_raw)
             dh_next = dz[:H, :]               # 前 H 行对应 h(t-1)
             dc_next = f_list[t] * dc          # c 的直连通道：c(t-1) 项
-
+        
+        """
         # 梯度裁剪
         for g in (dW_f, dW_i, dW_g, dW_o, db_f, db_i, db_g, db_o, dW_hy, db_y):
             np.clip(g, -5.0, 5.0, out=g)
-
+        """
+        
         # 参数更新
         self.W_f -= self.lr * dW_f; self.b_f -= self.lr * db_f
         self.W_i -= self.lr * dW_i; self.b_i -= self.lr * db_i
