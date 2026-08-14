@@ -5,6 +5,7 @@ __pycache__/
 
 # ===== 训练权重（体积过大，不上传） =====
 *.pth
+*.pt
 
 # ===== 数据集（体积过大，仅保留空目录占位，不上传真实数据） =====
 CNN-Learning/data/cifar10/**
@@ -16,3 +17,4 @@ CNN-Learning/data/MNIST/**
 调参.txt
 _pdf_text.txt
 _read_pdf.py
+extract_pdfs.py
