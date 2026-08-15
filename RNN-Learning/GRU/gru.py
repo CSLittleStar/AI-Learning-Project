@@ -1,32 +1,4 @@
-"""
-GRU (Gated Recurrent Unit) 数字序列预测 —— 代码复现
-====================================================
-复现论文《Learning Phrase Representations using RNN
-Encoder–Decoder for Statistical Machine Translation》
-(Kyunghyun Cho et al., 2014) 提出的 GRU 隐藏单元
-与其 Encoder–Decoder 架构思想。
-
-文件名统一为 gru.py，放置在 RNN-Learning/GRU 下。
-与 ../RNN/rnn.py、../LSTM/lstm.py 保持一致的风格。
-
-本文件包含四部分：
-  1. VanillaGRU (from scratch)   —— 完全从零实现 GRU 前向 + BPTT 反向传播
-  2. TorchGRU                   —— 使用 PyTorch 内置 nn.GRU 的版本（对照）
-  3. EncoderDecoderGRU          —— 复现论文 Encoder–Decoder 架构（自回归多步预测）
-  4. 数据 / 训练 / 可视化         —— 同样以"正弦波序列预测"作为数字序列预测任务
-
-GRU 单元公式（论文 Eq. 5–8，本复现与原论文一致）：
-  重置门 r(t) = sigmoid(W_r · x(t) + U_r · h(t-1) + b_r)
-  更新门 z(t) = sigmoid(W_z · x(t) + U_z · h(t-1) + b_z)
-  候选状态 h̃(t) = tanh(W · x(t) + U · (r(t) ⊙ h(t-1)) + b_h)   # 关键：r⊙h，而非完整 h
-  隐藏状态 h(t) = z(t) ⊙ h(t-1) + (1 - z(t)) ⊙ h̃(t)           # 门控线性插值
-  输出：   y(t) = W_hy · h(t) + b_y
-
-与 LSTM 相比，GRU 只有两个门（重置门、更新门），没有独立的细胞状态 c(t)，
-隐藏状态即最终输出。候选状态用"重置门对上一时刻隐藏态做逐元素屏蔽 (r⊙h)"，
-使得单元能丢弃与未来无关的信息，从而学到不同时间尺度的依赖——这正是论文
-2.3 节强调的"adaptively remembers and forgets"。
-"""
+"""GRU (Gated Recurrent Unit) 数字序列预测 —— 代码复现"""
 
 import numpy as np
 import torch
