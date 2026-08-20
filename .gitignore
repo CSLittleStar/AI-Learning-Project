@@ -18,3 +18,7 @@ CNN-Learning/data/MNIST/**
 _pdf_text.txt
 _read_pdf.py
 extract_pdfs.py
+codebuddy 生成的所有文件.txt
+
+# ===== 工具配置备份（不纳入版本控制） =====
+codebuddy配置备份/

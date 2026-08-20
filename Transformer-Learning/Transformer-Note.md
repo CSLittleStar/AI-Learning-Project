@@ -99,9 +99,46 @@
 - 一些额外的知识点：
     - Add&Norm：Add是残差；Norm是LayerNorm归一化
     - Embedding矩阵：可供训练的token向量查找表，用以表示相近语义的token
-    - 缩放点积注意力：
-    - 位置编码的实现方式：
+    - 缩放点积注意力：就是Self-Attention那个核心公式
+    - 位置编码的实现方式：偶数采用sin，奇数采用cos。
+
 ### BERT
+- 提出问题：
+    - Transformer的词语只存在一个固定向量，无法在不同语言下表达不同含义。即缺乏Contextualized Representation（上下文相关表示）
+    - RNN/LSTM可以利用上下文，但存在方向的问题。即只能左边到右边，而BERT的突破在于让模型在预训练过程中真正利用双向上下文。
+- BERT = Transformer Encoder + 双向预训练 + 下游任务微调
+    - BERT没用Transformer Decoder。因为它只做语言理解。
+    - 输入前存在预处理，将[CLS], [SEP]作为特殊token插入token化的文本中，再进行Embedding
+    - BERT输入Embedding = TokenEmbedding + PositionEmbedding + SegmentEmbedding
+        - SegmentEmbedding的作用：告诉Transformer当前的Token属于第一个句子，还是第二个句子（亦或是第i个句子）
+    - 重要思想：Pre-training + Fine-tuning
+- 预训练Pre-training：
+    - 用MLM和NSP学习通用语言知识
+    - 核心创新：Masked Language Model
+        - 随机遮住输入中的一些词，让模型预测
+        - 特殊设计：避免Pre-training / Fine-tuning mismatch，80%的输入被遮住，10%的输入被替换，10%的输入不变
+        - 学习token与上下文之间的关系
+    - Next Sentence Prediction
+        - 正样本标签[IsNext]，负样本标签[NotNext]
+        - 输入两个句子，判断第二个句子是否是第一个句子的下一句。
+        - 通过[CLS]的表示进行二分类：[CLS] Sentence A [SEP] Sentence B [SEP] --> Transformer --> [CLS] vector --> Classifier --> IsNext/NotNext
+        - 学习句子与句子之间的关系
+- 微调Fine-tuning：
+    - 选择具体下游任务作为训练目标，学会具体任务
+    - 分类：
+        - 文本分类（[CLS] This movie is great! [SEP]）：输入取[CLS]对应的向量h_CLS，y=softmax(W * h_CLS + b)
+        - 两句话分类（[CLS] Sentence A [SEP] Sentence B [SEP]）：主要使用h_CLS
+    - QA问答（[CLS] Question [SEP] Passage [SEP]）：模型输出每个token表示为h1, h2, ..., hn ，分别预测答案开始位置和答案结束位置。
+    - 命名实体识别NER
+- 创新点总结：
+    - （核心）深度双向Transformer表示（Deep Bidirectional）：通过Masked Language Model让每个Token同时利用左右上下文
+    - 统一的预训练—微调框架（Pre-training / Fine-tuning）：一个预训练模型->增加一个简单任务层->Fine-tuning
+    - 把 Transformer Encoder 推向通用 NLP Backbone
+- 一些问题：
+    - MLM存在[Mask]不一致的问题，Pre-training / Fine-tuning mismatch
+    - 训练效率问题：相比从左到右的模型收敛略慢，双向性换来了训练目标上的一些效率损失。
+    - 存在最大长度限制（SequenceLength≤512）
+
 
 ### ViT
 
