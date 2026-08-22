@@ -141,6 +141,27 @@
 
 
 ### ViT
-
-
+#### 模型概述：
+- 输入 = Patch Embedding + CLS + Position Embedding
+    - Patch Embedding：将一张图片切成patch，作为token进Transformer。最终得到$z_{i}$
+    - [CLS] Token：输入变为$z_{0}=[x_{class}; x^{1}_{p}E; x^{2}_{p}E]; ...; x^{N}_{p}E$，经过Encoder后，$z_{l} = [z^{0}_{L}; ...]$。其中，$z^{0}_{L}$是整张图的全局表示。
+    - Position Embedding：$z_{0}=[x_{class}; x^{1}_{p}E; x^{2}_{p}E]; ...; x^{N}_{p}E + E_{pos}$
+- 进入Transformer Encoder：
+    - layerNorm
+    - Multi-Head Attention
+    - Residual + LayerNorm
+    - MLP（约等于Transformer的FFN）：$MLP(x) = W_{2} GELU(W_{1}x + b_{1}) + b_{2}$
+    - Residual
+- $z^{0}_{L}$进入分类Head，完成Classification。
+- 预训练+微调：在完成上述预训练，得到一个通用结果后，可以进行微调，采用别的数据集，让 ViT 学习具有迁移价值的通用视觉表示。使模型适应具体下游数据分布和任务。
+#### 研究：
+- 隐藏维度D：输入时是N = $P^{2}C$ 的维度，需要更正成Transformer的维度D，因此需要一个矩阵 E = N * D$ ，最终 (1*N) (N*D)=D
+- Transformer叠层的作用：
+    - Head是横向的，每个Encoder Layer有多个Head，并行工作处理各自的内容。
+    - Encoder Layer是纵向的，网络越深，可以进行更复杂的逐层特征变换。
+- Patch的作用：
+    - patch越小，细节越多，Token越多，计算量暴涨
+- ViT与CNN比较：
+    - CNN：有限的数据集下，做局部学习
+    - Transformer：大规模数据集中，做全局学习
 ### CLIP

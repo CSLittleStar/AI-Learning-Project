@@ -10,15 +10,17 @@ __pycache__/
 # ===== 数据集（体积过大，仅保留空目录占位，不上传真实数据） =====
 CNN-Learning/data/cifar10/**
 CNN-Learning/data/MNIST/**
+Transformer-Learning/ViT/data/**
 !CNN-Learning/data/cifar10/.gitkeep
 !CNN-Learning/data/MNIST/.gitkeep
+!Transformer-Learning/ViT/data/.gitkeep
 
 # ===== 其他不上传文件 =====
 调参.txt
 _pdf_text.txt
 _read_pdf.py
 extract_pdfs.py
-codebuddy 生成的所有文件.txt
+codebuddy*.txt
 
 # ===== 工具配置备份（不纳入版本控制） =====
 codebuddy配置备份/
