@@ -7,12 +7,16 @@ __pycache__/
 *.pth
 *.pt
 
-# ===== 数据集（体积过大，仅保留空目录占位，不上传真实数据） =====
+# ===== 数据集（体积过大，不上传真实数据） =====
+# 根 data/ 目录整体忽略（含数据集与占位文件）
+data/
+
+# 旧结构 CNN-Learning/data 已迁移至根 data/，不再需要占位
 CNN-Learning/data/cifar10/**
 CNN-Learning/data/MNIST/**
+
+# ViT 保留空目录占位
 Transformer-Learning/ViT/data/**
-!CNN-Learning/data/cifar10/.gitkeep
-!CNN-Learning/data/MNIST/.gitkeep
 !Transformer-Learning/ViT/data/.gitkeep
 
 # ===== 其他不上传文件 =====
