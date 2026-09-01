@@ -154,3 +154,161 @@ self.proj = nn.Linear(ctx_dim, 768)
         - 之后的EncoderLayer中，Wi是根据上一层的Wi-1得到的，P不存在这种关系，Pv每层独立，以参数形式自学习。
 - Z_image和Z_text是怎么得到的？
     - 两边Encoder最终的结果，非独立参数，无需训练
+
+### 以下内容不再做实验验证
+### KgCoOp (CVPR23)
+- 创新：直接在特征空间约束“学习后的 Prompt 不要离原始 Prompt 太远”。
+- 在CoOp上加入一个Loss_Kg，来自CoOp的V1~Vm提示词与CLIP的“A photo of a”提示词的损失计算
+- 最终的损失Loss = Loss_CE + Loss_Kg * λ
+
+### Prograd (ICCV23)
+- 创新：不直接约束 Prompt，而是约束“Prompt 的梯度更新方向”。
+- 三个向量：
+    - Gd表示下游任务希望的梯度方向
+    - Gg表示通用CLIP做zero-shot prediction的预测方向
+    - Gprograd表示实际的梯度方向
+- 做法：
+    - CoOp一同操作到相似度计算，得到一个预测的Gprograd的方向向量，分别与图片的标签label做Loss_CE，与Gg做Loss_KL
+    - Loss_CE反向的梯度表示为Gd，Loss_KL反向的梯度表示为Gg
+    - 将其返回到learnable context这边准备学习
+    - 如果Gd和Gg的正交方向小于90°，说明下游任务大体还是没偏离通用CLIP的，Gprograd的梯度按照Gd，也就是下游任务学习
+    - 如果Gd和Gg的正交方向大于90°，说明下游任务偏离了通用CLIP的，Gprograd的梯度做法是“把Gd投影到Gg正交的方向上”
+- 总结，也算是CoOp的微调，重点是通过正交化的设计，避免few-shot的下游任务影响模型的整体性能，同时也避免了过拟合。
+
+### PromptSRC (ICCV23)
+- 创新：可学习 Prompt + 原始 CLIP知识约束 + 图像特征约束 + Prompt自身约束
+- 三个正则化约束
+    - Textual Alignment Regularization(promptsrc学习的textprompt与clip的约束，类似KgCoOp)：L_text = 1 - cos(z_clip_text, z_prompt_text)
+    - Visual Feature Alignment(让 Prompt Learning 后的表示不要偏离原来的 CLIP视觉知识)：计算方法同上
+    - 直接约束 Prompt 参数本身，避免参数过度变化。即用训练好的Prompt与初始的Prompt之间的差值作为loss
+    - 最终的损失Loss = Loss_CE + Loss_text * λ1 + Loss_vision * λ2 + Loss_prompt * λ3
+- 总结：通过多个自调节约束，让 Prompt Learning 在适应下游任务和保持 CLIP 通用知识之间取得平衡。
+- 细节说明：
+    - PromptSRC的可训练参数有两个：Pv和Pt
+    - 从输入开始，先是CLIP的text prompt与Pt_0做concat拼接，图像跟Pv_0做拼接，进入各自的encoder
+    - 然后，每层encoder是上一层的result+Pvt_i得到的，这套流程类似maple，只是没做跨模态
+    - prompt的Loss计算，是根据CLIP的text-vision得到的similarity和PromptSRC训练得到的text-vision的similarity，做KL Divergence（某周概率分布）。
+        -   $$
+            \mathcal{L}_{\mathrm{SCL-logits}}
+            =
+            D_{\mathrm{KL}}(P_p \parallel P)
+            =
+            \sum_{i=1}^{C}
+            P_p(i)
+            \log
+            \frac{P_p(i)}{P(i)}
+            $$
+        - $$ P_p=\operatorname{softmax}(S_p) $$
+        - $$ P=\operatorname{softmax}(S) $$
+        - $$ S_p=\operatorname{sim}(\tilde{f}_p,\tilde{g}_p) $$
+        - $$ S=\operatorname{sim}(\tilde{f},\tilde{g}) $$
+        - P_p：PromptSRC 的图文匹配概率分布
+        - P：原始 CLIP 的图文匹配概率分布
+        - C：类别数量
+### CoPrompt (ICLR24)
+- 创新：约束“训练模型”和“原始CLIP”的预测/表示保持一致。
+    - Consistency Constraint：类似PromptSRC，加入prompt的文本端和图像端，跟原始CLIP的文本图像的结果做余弦算Loss。
+    - Perturbation：不仅要求两个模型对原始输入一致，还要求它们对扰动后的输入也保持一致。
+        - 图像做增强，文本做语义等价
+        - 防止过拟合
+        - LLM生成的new text单独进入Text Encoder
+        - 原始CLIP的文本+可学习Prompt一块儿进入另一个Text Encoder
+        - 原始图像+可学习Prompt进入Image Encoder
+        - 经过增强的扰动图像单独进入另一个Image Encoder
+    - Prompt + Adapter：Prompt调整输入空间，Adapter调整特征。输出空间
+- 最终Loss = Loss_CE + Loss_Consistency * λ
+### PromptKD (CVPR2024)
+- 创新：通过知识蒸馏大幅度节省模型参数量、内存、运行时间，也可以让小模型学习大模型的基类特异能力
+- teacher-student：
+    - teacher代表原始CLIP，其text encoder得到的输出text feature会保存为一个pre-stored text feature
+    - teacher的text feature和image feature会相乘得到一个logits
+    - 学生CLIP只有一个image Encoder，在可学习prompt的输入下进encoder，得到image feature，再通过projector转换特征维度，匹配teacher text feature后，与其相乘，得到logits。
+    - 下一步进行蒸馏，从teacher的logits蒸馏到student的logits
+- 做法：
+    - 首先微调大模型，将大模型的文本特征保留（基类微调）
+    - 同时喂给大模型和小模型的无标签的图片，和大模型保存下来的文本特征做对比，并且用project将小模型视觉特征维度映射到和大模型文本特征可以匹配的维度，之后让小模型对齐大模型。只更新prompt和project。
+    - 用小模型做测试
+- 大白话总结：
+    - 首先，Teacher做一个准备，按照CLIP操作正常训练，得到了text-feature和image-feature。
+    - 然后，冻结Image-Encoder，固定Text-feature。
+    - 接下来做蒸馏：
+        - 将图片输入分别放入冻结的teacher-image-encoder，和可学习prompt+project的student-image-encoder
+        - logits的计算所需要的text-feature全由teacher固定的那个买单
+        - 这样可以计算出teacher-logits和student-logits
+        - 让student-logits尽可能学习到teacher-logits，以此自调节prompt+project。
+    - 最终用测试图片放入学习完毕的student-image-encoder，老样子用text-feature计算logits，这是测试集做测试的logits结果。
+- 本质是蒸馏logits，也就是teacher对各类别的预测分布。
+- ![PromptKD 整体架构](./PromptKD%20Image.png)
+### DePT (CVPR2024)
+- 创新：不是仅学习一个整体的prompt，而是把prompt的作用分解，分别学习
+- 一个prompt分成两个分类头
+    - CAT Head：隔离出来吸收基类知识
+        - 本质上承担了CLIP/CoOp原来的zero-shot classification的任务
+        - 即判断图片是什么类别（image-classification）
+        - 保证不把分类能力整坏
+    - ITM Head：保证原始空间不被破坏
+        - 学习的是一种更加明确的Image-Text Matching能力，即image-text是否匹配
+        - 保证text-image的语义对应关系能够得到更细致的学习
+         - ITM Head损失就是CoOp原本CLIP Classification Loss的计算
+    - 评测时，base评测用混合（1-λ）*ITM Head + λ*CAT Head；new评测尽量用ITM
+- 可训练参数：
+    - CAT损失函数更新CAT Head内部参数
+    - 总损失函数更新提示词（Loss = L_ITM + L_CAT * λ
+- 总结：分解prompt learning中的知识，通用知识与下游任务特定知识分别建模/学习，从而降低CoOp中prompt对few-shot下游数据过拟合的问题，同时尽可能保留CLIP的泛化能力。
+### MMA
+- 创新1：不是整个 CLIP 都进行 Adapter，而是选择性地在高层加入 Adapter。
+    - 论文实验最终发现，从 第5层开始加入 MMA，一直到第12层，Base/Novel/HM 的综合权衡最好。
+- 创新2：不是分别训练 Vision Adapter 和 Text Adapter
+    - shared projection链接vision和text的信息
+    - 让两个模态的数据经过同一个可学习函数
+- 核心结构：Shared Projection
+    - Text和Vision各有一个down->shared->up的流程
+    - 两边的shared阶段可共享自身参数
+    - down和up分别用于适配不同模态：down确保两边到shared的维度相同，up确保shared之后回到各自维度
+    - 一共五个参数：W_vision_down, W_vision_up, W_text_down, W_text_up, W_shared_projection
+- 总结：MMA 通过在视觉和文本 Adapter 中共享 Projection 参数，使两个模态的下游学习梯度能够共同更新共享参数，从而建立跨模态的参数级联系，缓解 Vision-Language 的语义鸿沟并改善特征对齐；同时结合仅在高层加入 Adapter、冻结低层的策略，在 few-shot 场景下兼顾任务判别性与预训练知识的泛化能力。
+    - MMA主要解决的问题是：vision和language在微调时“各学各的”
+    - 上述问题在few-shot下更加严重，因为每个类别缺少训练样本，单独学习容易过拟合
+    - MMA的做法，让两边在训练中途的参数层面链接，可以做到梯度“相互影响”
+    - 注意：依旧是先拿到CLIP的预训练模型，针对不同下游任务做MMA的操作，所以是微调，而不是重新训练
+### MMRL
+- 创新：Shared Learnable Representation Space（R）——建立一组与具体模态无关的共享表示 Token。
+    - 通过两个Proj分别映射到Image和Text
+    - 插入在高层（经典Transformer深层做具体特征）
+    - 最终的R可看作是模型下游任务的特别特征
+- 模型架构：
+    - 核心参数：
+        - R：MMRL新增的可训练参数，在Encoder高层参与Transformer计算
+        - C：Class Token，CLIP原本的全局语义表示
+        - E：Text的特征
+    - 第一个Patch Proj：把共享的R映射成适合ImageEncoder使用的R'，跟Text Encoder得到的E'做similarity（Loss_r）
+    - 第二个Patch Proj：把CLIP全局的语义C映射成C'，跟Image Encoder得到的E'做similarity（Loss_c）
+    - Text Proj：同理，映射TextEncoder的E->E'
+    - 两个similarity是按照(1-α) * Loss_r + α * Loss_c做的
+    - 除此之外，还有个两个loss，采用cosine相似度计算，也就是text proj与第二个patch proj，结果分别同frozen encoder，即原始CLIP的text与patch计算得到，记为Loss_v, Loss_t
+    - 最终的Loss = (1-α) * Loss_r + α * Loss_c + λ * (Loss_v + Loss_t)
+    - 注意：α和λ都不是可训练参数，而是人为设定的常量
+- 总结：
+    - 整体看的关键还是α和λ的设定。λ是通用性的约束，决定模型能偏离CLIP的范围；α则是在该范围内往下游任务学习的趋势。这俩手动设定造成的不确定因素有点多啊。
+    - 至于搞同一个可训练参数，放image和text一块儿训练，这套打通两侧的流程倒是见过几次了，不稀奇。
+
+### DPC (CVPR2025)
+- 创新：复制一份prompt，继续在下游任务上训练微调，原版的通用prompt冻结。最终两者加权得到既适合下游的prompt，又适合通用的prompt。
+- 大体架构：
+    - 原版的CLIP或者CoOp先训练，得到预训练模型
+    - 冻结参数和原版的Prompt，将prompt复制出一份
+    - 在base上训练测试时做成mixed prompt，训练复制的这份prompt
+    - 在new上采用冻结的原始prompt（相当于复制训练的这份加权值为0）
+- 具体细节：
+    - 1、在做训练时，DPC采用了硬负样本优化(HNO)做法，先根据被冻结的模型，找出K个negative objects，让DPC在这些难啃的骨头上做优化。
+    - 这个道理可以理解，因为DPC训练的prompt底子就是被冻结的模型，没必要再训练本来模型就能分辨的数据，找难啃的骨头优化效率更高。
+    - 2、加权：加权的参数是手动设置的，不进入训练。
+    - 这操作跟MMRL有点类似啊，实质上这个加权参数对结果的影响很大，而且针对不同的数据集，恐怕还需要特调，不能一套参数用到底，否则结果不好看。
+- 总结：该论文的做法比较简单粗暴，相当于在原有模型的基础上，继续做下游任务的训练。但是考虑到不能过拟合，就想出了一个复制prompt，一半训练一半冻结的操作。最终用加权来混合两个prompt的内容。
+    - 注1：为什么能混合？论文有提出一个实验，分析了两个prompt的特征，指出尽管经过了额外的训练，两者在特征维度上具有相似的趋势，因此相加不会影响大体特征的方向。
+    - 注2：有什么缺点？很明显，DPC只针对base做了强行微调，还是会遗忘通用知识的，只是根据混合加权参数或多或少限制。不过现在基本上都在将base和new解耦，只要base尽量不影响new，让new出现明显下降，基本上不算大问题。
+    - 注3：现有的方向主要有这么几种做法：
+        - 损失函数设计（一致性约束、梯度）：PromptSRC、KgCoOp
+        - 提示词限制：DePT、DPC
+        - 引入新提取词/结构：MMA、MMRL
+        - 引入外部知识（大模型生成等）：CoPrompt
